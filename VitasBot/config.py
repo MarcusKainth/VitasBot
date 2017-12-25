@@ -35,7 +35,7 @@ class Config:
         config = configparser.ConfigParser(interpolation=None)
         config.read(config_file, encoding="utf-8")
 
-        config_sections = {"User", "Permissions", "Credentials", "Channel", "Music"}.difference(config.sections())
+        config_sections = {"User", "Permissions", "Credentials", "Channel", "Music", "Console"}.difference(config.sections())
 
         if config_sections:
             raise Exception(
@@ -50,6 +50,8 @@ class Config:
         self.token = config.get("Credentials", "Token")
         self.owner_id = config.get("Permissions", "OwnerID")
         self.channel_id = config.get("Channel", "ChannelID")
+        self.debug_level = config.get("Console", "DebugLevel")
+        self.debug_mode = config.get("Console", "DebugMode")
 
 class ConfigDefaults:
     def __init__(self):

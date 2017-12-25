@@ -12,3 +12,6 @@ config/config.ini
 
 # Cache
 VitasBot/__pycache__/
+
+# Logs
+logs/
