@@ -30,14 +30,21 @@ import discord
 import os
 import sys
 
+from .config import ConfigDefaults
+
 from .constants import VERSION as BOTVERSION
+from .constants import DISCORD_MSG_CHAR_LIMIT
 
 discord.opus.load_opus("libopus-0.x64.dll")
 
 class VitasBot(discord.Client):
     
-    def __init__(self, config):
+    def __init__(self, config=None):
+        if config is None:
+            config = ConfigDefaults()
+
         self.config = config
+        self.exit_signal = None
 
         super().__init__()
 
@@ -76,8 +83,8 @@ class VitasBot(discord.Client):
         try:
             self.loop.run_until_complete(self.start(self.config.token))
         except discord.errors.LoginFailure:
-            sys.stderr.write("""Bot cannot login,
-                bad credentials.""")
+            sys.stderr.write("Bot cannot login, "
+                "bad credentials.")
         except KeyboardInterrupt:
             self.loop.run_until_complete(self.logout())
         finally:

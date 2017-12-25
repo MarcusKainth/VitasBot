@@ -50,3 +50,9 @@ class Config:
         self.token = config.get("Credentials", "Token")
         self.owner_id = config.get("Permissions", "OwnerID")
         self.channel_id = config.get("Channel", "ChannelID")
+
+class ConfigDefaults:
+    def __init__(self):
+        self.token = "TOKEN_HERE"
+        self.owner_id = 000000000000000000
+        self.channel_id = 000000000000000000
