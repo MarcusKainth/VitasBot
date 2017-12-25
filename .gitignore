@@ -1,0 +1,14 @@
+# Audio
+*.flac
+*.m4a
+*.mp3
+*.wav
+
+# Dynamic Linked Library
+*.dll
+
+# Config
+config/config.ini
+
+# Cache
+VitasBot/__pycache__/
