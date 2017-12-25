@@ -103,7 +103,7 @@ class VitasBot(discord.Client):
         owner = self._get_owner(voice=True) or self._get_owner()
 
         if owner and self.servers:
-            print("Owner  {0}/{1}#{2}".format(
+            print("Owner: {0}/{1}#{2}".format(
                 owner.id,
                 owner.name,
                 owner.discriminator
