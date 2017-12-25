@@ -40,6 +40,12 @@ class VitasBot(discord.Client):
 
         super().__init__()
 
+    def _get_owner(self, *, server=None, voice=False):
+        return discord.utils.find(
+            lambda m: m.id == self.owner_id and (m.voice_channel if voice else True),
+            server.members if server else self.get_all_members()
+        )
+
     def _cleanup(self):
         try:
             self.loop.run_until_complete(self.logout())
@@ -78,9 +84,8 @@ class VitasBot(discord.Client):
 
     def stream(self, voice, song):
         title = song.strip(".mp3")
-        now_playing = "I am now playing: {}".format(title)
+        now_playing = "Now playing: {}".format(title)
         print(now_playing)
-        print("------")
         self.change_presence(game=discord.Game(name=title), status=discord.Status.online, afk=False)
         #await client.send_message((discord.Object(id="324635620301340672")), now_playing)
 
@@ -88,19 +93,41 @@ class VitasBot(discord.Client):
         player.start()
 
     async def on_ready(self):
-        print('Logged in as:')
-        print(self.user.name)
-        print(self.user.id)
-        print("------")
+        print("Bot:   {0}/{1}#{2}{3}".format(
+                self.user.id,
+                self.user.name,
+                self.user.discriminator,
+                " [BOT]" if self.user.bot else " [UserBOT]"
+        ))
 
-        """song = "Vitas - The 7th Element.mp3"
+        owner = self._get_owner(voice=True) or self._get_owner()
 
-        voice = await self.join_voice_channel(self.channel_id)
-        self.stream(voice, song)"""
+        if owner and self.servers:
+            print("Owner  {0}/{1}#{2}".format(
+                owner.id,
+                owner.name,
+                owner.discriminator
+            ))
 
-    async def join_voice_channel(self, channel_id):
-        channel = self.get_channel(channel_id)
+            print("\nServer list:")
+            [print(" - {0}".format(s.name)) for s in self.servers]
+        elif self.servers:
+            print("Owner could not be found on any server (id: {0})".format(
+                self.owner_id
+            ))
+
+            print("\nServer list:")
+            [print(" - {0}".format(s.name)) for s in self.servers]
+        else:
+            print("\nOwner unknown, bot is not on any servers")
+
+        print()
+
+        song = "Vitas - The 7th Element.mp3"
+
+        channel = self.get_channel(str(self.channel_id))
         voice = await self.join_voice_channel(channel)
-        print("Bot joined channel {0}".format(channel_id))
-        print("------")
-        return voice
+
+        print("Bot joined channel {0}".format(self.channel_id))
+
+        self.stream(voice, song)
