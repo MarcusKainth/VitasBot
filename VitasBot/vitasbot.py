@@ -24,9 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import discord
 import aiohttp
 import asyncio
+import discord
+import os
 import sys
 
 discord.opus.load_opus("libopus-0.x64.dll")
@@ -43,6 +44,12 @@ class VitasBot(discord.Client):
     def _get_owner(self, *, server=None, voice=False):
         return discord.utils.find(
             lambda m: m.id == self.owner_id and (m.voice_channel if voice else True),
+            server.members if server else self.get_all_members()
+        )
+
+    def _get_self(self, *, server=None):
+        return discord.utils.find(
+            lambda m: m.id == self.user.id,
             server.members if server else self.get_all_members()
         )
 
@@ -82,14 +89,14 @@ class VitasBot(discord.Client):
             if self.exit_signal:
                 raise self.exit_signal
 
-    def stream(self, voice, song):
-        title = song.strip(".mp3")
-        now_playing = "Now playing: {}".format(title)
+    async def stream(self, voice, song):
+        filename, file_extension = os.path.splitext(song)
+        now_playing = "Now playing: {}".format(filename)
         print(now_playing)
-        self.change_presence(game=discord.Game(name=title), status=discord.Status.online, afk=False)
+        await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
         #await client.send_message((discord.Object(id="324635620301340672")), now_playing)
 
-        player = voice.create_ffmpeg_player(song, options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
+        player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
         player.start()
 
     async def on_ready(self):
@@ -121,7 +128,9 @@ class VitasBot(discord.Client):
         else:
             print("\nOwner unknown, bot is not on any servers")
 
-        print()
+        nickname = "Vitaliy Vladasovich Grachov"
+        print("\nChanging nickname to {0}".format(nickname))
+        await self.change_nickname(self._get_self(), nickname=nickname)
 
         song = "Vitas - The 7th Element.mp3"
 
@@ -130,4 +139,4 @@ class VitasBot(discord.Client):
 
         print("Bot joined channel {0}".format(self.channel_id))
 
-        self.stream(voice, song)
+        await self.stream(voice, song)
