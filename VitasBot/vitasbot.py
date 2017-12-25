@@ -24,11 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import aiohttp
-import asyncio
-import discord
 import os
 import sys
+
+import asyncio
+import discord
 
 from .config import ConfigDefaults
 
@@ -48,7 +48,7 @@ class VitasBot(discord.Client):
 
         super().__init__()
 
-        self.http.user_agent += " VitasBot/%s" % BOTVERSION
+        self.http.user_agent += " VitasBot/{0}".format(str(BOTVERSION))
 
     def _get_owner(self, *, server=None, voice=False):
         return discord.utils.find(
@@ -136,9 +136,8 @@ class VitasBot(discord.Client):
         else:
             print("\nOwner unknown, bot is not on any servers")
 
-        nickname = "Vitaliy Vladasovich Grachov"
-        print("\nChanging nickname to {0}".format(nickname))
-        await self.change_nickname(self._get_self(), nickname=nickname)
+        print("\nChanging nickname to {0}".format(self.config.nickname))
+        await self.change_nickname(self._get_self(), nickname=self.config.nickname)
 
         song = "Vitas - The 7th Element.mp3"
         filename, file_extension = os.path.splitext(song)
