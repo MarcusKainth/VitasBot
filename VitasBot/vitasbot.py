@@ -89,11 +89,10 @@ class VitasBot(discord.Client):
             if self.exit_signal:
                 raise self.exit_signal
 
-    async def stream(self, voice, song):
+    def stream(self, voice, song):
         filename, file_extension = os.path.splitext(song)
         now_playing = "Now playing: {}".format(filename)
         print(now_playing)
-        await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
         #await client.send_message((discord.Object(id="324635620301340672")), now_playing)
 
         player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
@@ -133,10 +132,13 @@ class VitasBot(discord.Client):
         await self.change_nickname(self._get_self(), nickname=nickname)
 
         song = "Vitas - The 7th Element.mp3"
+        filename, file_extension = os.path.splitext(song)
+
+        await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
 
         channel = self.get_channel(str(self.channel_id))
         voice = await self.join_voice_channel(channel)
 
         print("Bot joined channel {0}".format(self.channel_id))
 
-        await self.stream(voice, song)
+        self.stream(voice, song)
