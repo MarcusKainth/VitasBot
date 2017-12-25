@@ -1,0 +1,106 @@
+# -*- coding: utf-8 -*-
+
+"""
+MIT License
+
+Copyright (c) 2017 Marcus Kainth
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
+import discord
+import aiohttp
+import asyncio
+import sys
+
+discord.opus.load_opus("libopus-0.x64.dll")
+
+class VitasBot(discord.Client):
+    
+    def __init__(self, token, owner_id, channel_id):
+        self.token = token
+        self.owner_id = owner_id
+        self.channel_id = channel_id
+
+        super().__init__()
+
+    def _cleanup(self):
+        try:
+            self.loop.run_until_complete(self.logout())
+        except:
+            pass
+
+        pending = asyncio.Task.all_tasks()
+        gathered = asyncio.gather(*pending)
+        
+        try:
+            gathered.cancel()
+            self.loop.run_until_complete(gathered)
+            gathered.exception()
+        except:
+            pass
+
+    # noinspection PyMethodOverriding
+    def run(self):
+        try:
+            self.loop.run_until_complete(self.start(self.token))
+        except discord.errors.LoginFailure:
+            sys.stderr.write("""Bot cannot login,
+                bad credentials.""")
+        except KeyboardInterrupt:
+            self.loop.run_until_complete(self.logout())
+        finally:
+            try:
+                self._cleanup()
+            except Exception:
+                sys.stderr.write("Error on cleanup")
+
+            self.loop.close()
+
+            if self.exit_signal:
+                raise self.exit_signal
+
+    def stream(self, voice, song):
+        title = song.strip(".mp3")
+        now_playing = "I am now playing: {}".format(title)
+        print(now_playing)
+        print("------")
+        self.change_presence(game=discord.Game(name=title), status=discord.Status.online, afk=False)
+        #await client.send_message((discord.Object(id="324635620301340672")), now_playing)
+
+        player = voice.create_ffmpeg_player(song, options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
+        player.start()
+
+    async def on_ready(self):
+        print('Logged in as:')
+        print(self.user.name)
+        print(self.user.id)
+        print("------")
+
+        """song = "Vitas - The 7th Element.mp3"
+
+        voice = await self.join_voice_channel(self.channel_id)
+        self.stream(voice, song)"""
+
+    async def join_voice_channel(self, channel_id):
+        channel = self.get_channel(channel_id)
+        voice = await self.join_voice_channel(channel)
+        print("Bot joined channel {0}".format(channel_id))
+        print("------")
+        return voice
