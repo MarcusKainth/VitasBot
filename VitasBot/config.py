@@ -24,14 +24,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from VitasBot import Config
-from VitasBot import VitasBot
+import os
+import sys
+import configparser
 
-def main():
-    config = Config("config/config.ini")
+class Config:
+    def __init__(self, config_file):
+        self.config_file = config_file
 
-    vitas_bot = VitasBot(config)
-    vitas_bot.run()
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(config_file, encoding="utf-8")
 
-if __name__ == "__main__":
-    main()
+        config_sections = {"Permissions", "Credentials", "Channel", "Music"}.difference(config.sections())
+
+        if config_sections:
+            raise Exception(
+                "One or more sections in the configuration file are missing.",
+                "Fix the configuration file. Each [Section] should have its "
+                "own line with nothing else on it. The following are missing: "
+                "{0}".format(", ".join(["[%s" % s for s in config_sections])
+                ),
+                preface="An error has occured parsing the configuration file:\n"
+            )
+
+        self.token = config.get("Credentials", "Token")
+        self.owner_id = config.get("Permissions", "OwnerID")
+        self.channel_id = config.get("Channel", "ChannelID")

@@ -30,20 +30,22 @@ import discord
 import os
 import sys
 
+from .constants import VERSION as BOTVERSION
+
 discord.opus.load_opus("libopus-0.x64.dll")
 
 class VitasBot(discord.Client):
     
-    def __init__(self, token, owner_id, channel_id):
-        self.token = token
-        self.owner_id = owner_id
-        self.channel_id = channel_id
+    def __init__(self, config):
+        self.config = config
 
         super().__init__()
 
+        self.http.user_agent += " VitasBot/%s" % BOTVERSION
+
     def _get_owner(self, *, server=None, voice=False):
         return discord.utils.find(
-            lambda m: m.id == self.owner_id and (m.voice_channel if voice else True),
+            lambda m: m.id == self.config.owner_id and (m.voice_channel if voice else True),
             server.members if server else self.get_all_members()
         )
 
@@ -72,7 +74,7 @@ class VitasBot(discord.Client):
     # noinspection PyMethodOverriding
     def run(self):
         try:
-            self.loop.run_until_complete(self.start(self.token))
+            self.loop.run_until_complete(self.start(self.config.token))
         except discord.errors.LoginFailure:
             sys.stderr.write("""Bot cannot login,
                 bad credentials.""")
@@ -136,9 +138,9 @@ class VitasBot(discord.Client):
 
         await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
 
-        channel = self.get_channel(str(self.channel_id))
+        channel = self.get_channel(str(self.config.channel_id))
         voice = await self.join_voice_channel(channel)
 
-        print("Bot joined channel {0}".format(self.channel_id))
+        print("Bot joined channel {0}".format(self.config.channel_id))
 
         self.stream(voice, song)
