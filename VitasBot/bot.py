@@ -32,6 +32,8 @@ import asyncio
 import discord
 import colorlog
 
+from textwrap import dedent
+
 from .config import ConfigDefaults
 
 from .constants import VERSION as BOTVERSION
@@ -170,13 +172,60 @@ class VitasBot(discord.Client):
 
         handler = getattr(self, "cmd_" + command, None)
 
+        print(args)
+
         if not handler:
             return
 
-        msg = await handler()
+        msg = await handler(*args)
 
         if msg:
-            await self.send_message(message.channel, msg)
+            await self.safe_send_message(message.channel, msg)
+
+    async def safe_send_message(self, dest, content, **kwargs):
+        tts = kwargs.pop("tts", False)
+        quiet = kwargs.pop("quiet", False)
+        expire_in = kwargs.pop("expire_in", 0)
+
+        msg = None
+
+        try:
+            if content is not None:
+                msg = await self.send_message(dest, content, tts=tts)
+        except discord.Forbidden:
+            log.error("Unable to send message to {0}, no permission".format(
+                dest.name))
+        except discord.NotFound:
+            log.error("Unable to send message to {0}, invalid channel?".format(
+                dest.name))
+        except discord.HTTPException:
+            if len(content) > DISCORD_MSG_CHAR_LIMIT:
+                log.error("Message over the size limit {0}/{1}".format(
+                    len(content), DISCORD_MSG_CHAR_LIMIT))
+            else:
+                log.error("Failed to send message, "
+                    "got HTTPException to {0} with {1}".format(
+                    dest.name, content
+                ))
+        finally:
+            if msg and expire_in:
+                asyncio.ensure_future(self._wait_delete_msg(msg, expire_in))
+
+        return msg
+
+    async def safe_delete_message(self, msg):
+        try:
+            return await self.delete_message(msg)
+        except discord.Forbidden:
+            log.error("Unable to send message {0}, no permission".format(
+                msg.clean_content))
+        except discord.NotFound:
+            log.error("Unable to send message {0}, invalid channel?".format(
+                msg.clean_content))
+
+    async def _wait_delete_msg(self, msg, after):
+        await asyncio.sleep(after)
+        await self.safe_delete_message(msg)
 
     async def on_ready(self):
         log.info("Bot:   {0}/{1}#{2}{3}".format(
@@ -215,18 +264,38 @@ class VitasBot(discord.Client):
 
         log.info("Bot joined channel {0}\n".format(self.config.channel_id))
 
-    async def cmd_help(self):
-        msg = "**Available commands**\n```"
-        commands = []
+    async def cmd_help(self, command=None):
+        """
+        Usage:
+            {command_prefix}help [command]
 
-        for func in dir(self):
-            if func.startswith("cmd_"):
-                cmd_name = func.replace("cmd_", "").lower()
-                commands.append("{0}{1}".format(self.config.command_prefix, cmd_name))
+        Prints a help message.
+        If a command is specified, a personalised help message is printed
+        for that command. Otherwise, all available commands are listed.
+        """
+        
+        msg = None
 
-        msg += ", ".join(commands)
-        msg += "```\nYou can also use `{0}help x` for more info about each command.".format(
-            self.config.command_prefix
-        )
+        if command:
+            cmd = getattr(self, "cmd_" + command, None)
+
+            if cmd:
+                msg = "```{0}```".format(dedent(cmd.__doc__)).format(
+                    command_prefix=self.config.command_prefix)
+            else:
+                msg = "No such command"
+        else:
+            msg = "**Available commands**\n```"
+            commands = []
+
+            for func in dir(self):
+                if func.startswith("cmd_"):
+                    cmd_name = func.replace("cmd_", "").lower()
+                    commands.append("{0}{1}".format(self.config.command_prefix, cmd_name))
+
+            msg += "\n".join(commands)
+            msg += "```\nYou can also use `{0}help x` for more info about each command.".format(
+                self.config.command_prefix
+            )
 
         return msg
