@@ -139,15 +139,6 @@ class VitasBot(discord.Client):
             if self.exit_signal:
                 raise self.exit_signal
 
-    def stream(self, voice, song):
-        filename, file_extension = os.path.splitext(song)
-        now_playing = "Now playing: {}".format(filename)
-        log.info(now_playing)
-        #await client.send_message((discord.Object(id="324635620301340672")), now_playing)
-
-        player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
-        player.start()
-
     async def on_message(self, message):
         await self.wait_until_ready()
 
@@ -171,8 +162,6 @@ class VitasBot(discord.Client):
         command = command[len(self.config.command_prefix):].lower().strip()
 
         handler = getattr(self, "cmd_" + command, None)
-
-        print(args)
 
         if not handler:
             return
@@ -259,11 +248,6 @@ class VitasBot(discord.Client):
         log.info("\nChanging nickname to {0}".format(self.config.nickname))
         await self.change_nickname(self._get_member_from_id(self.user.id), nickname=self.config.nickname)
 
-        channel = self.get_channel(str(self.config.channel_id))
-        voice = await self.join_voice_channel(channel)
-
-        log.info("Bot joined channel {0}\n".format(self.config.channel_id))
-
     async def cmd_help(self, command=None):
         """
         Usage:
@@ -299,3 +283,26 @@ class VitasBot(discord.Client):
             )
 
         return msg
+
+    async def cmd_play(self, channel_id, song=None):
+        """
+        Usage:
+            {command_prefix}play [channel_id] [song]
+
+        Play song stored on the bot.
+        Note: If song is not specified, the bot will pick a song to play 
+        from random in the songs directory specified in the configuration
+        """
+        
+        filename, file_extension = os.path.splitext(song)
+        now_playing = "Now playing: {}".format(filename)
+        log.info(now_playing)
+        await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
+
+        channel = self.get_channel(str(channel_id))
+        voice = await self.join_voice_channel(channel)
+
+        log.info("Bot joined channel {0}\n".format(channel_id))
+
+        player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0")
+        player.start()
