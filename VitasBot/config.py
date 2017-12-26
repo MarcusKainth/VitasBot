@@ -50,6 +50,7 @@ class Config:
         self.token = config.get("Credentials", "Token")
         self.owner_id = config.get("Permissions", "OwnerID")
         self.channel_id = config.get("Channel", "ChannelID")
+        self.command_prefix = config.get("Channel", "CommandPrefix")
         self.debug_level = config.get("Console", "DebugLevel")
         self.debug_mode = config.get("Console", "DebugMode")
 

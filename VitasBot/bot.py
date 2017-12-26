@@ -146,6 +146,24 @@ class VitasBot(discord.Client):
         player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0", after=lambda: self.stream(voice, song))
         player.start()
 
+    async def on_message(self, message):
+        await self.wait_until_ready()
+
+        if message.author == self.user:
+            log.warning("Ignoring messages from myself: {0}".format(
+                message.content))
+            return
+
+        if message.author.id != self.config.owner_id:
+            log.warning("Ignoring messages from user (#{0}): {1}".format(
+                message.author.id, message.content))
+            return
+
+        message_content = message.content.strip()
+
+        if not message_content.startswith(self.config.command_prefix):
+            return
+
     async def on_ready(self):
         log.info("Bot:   {0}/{1}#{2}{3}".format(
                 self.user.id,
