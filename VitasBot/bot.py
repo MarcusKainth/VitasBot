@@ -155,14 +155,28 @@ class VitasBot(discord.Client):
             return
 
         if message.author.id != self.config.owner_id:
-            log.warning("Ignoring messages from user (#{0}): {1}".format(
-                message.author.id, message.content))
+            log.warning("Ignoring messages from user ({0}/{1}#{2}): {3}".format(
+                message.author.id, message.author.name, message.author.discriminator,
+                message.content))
             return
 
         message_content = message.content.strip()
 
         if not message_content.startswith(self.config.command_prefix):
             return
+
+        command, *args = message_content.split(' ')
+        command = command[len(self.config.command_prefix):].lower().strip()
+
+        handler = getattr(self, "cmd_" + command, None)
+
+        if not handler:
+            return
+
+        msg = await handler()
+
+        if msg:
+            await self.send_message(message.channel, msg)
 
     async def on_ready(self):
         log.info("Bot:   {0}/{1}#{2}{3}".format(
@@ -200,3 +214,19 @@ class VitasBot(discord.Client):
         voice = await self.join_voice_channel(channel)
 
         log.info("Bot joined channel {0}\n".format(self.config.channel_id))
+
+    async def cmd_help(self):
+        msg = "**Available commands**\n```"
+        commands = []
+
+        for func in dir(self):
+            if func.startswith("cmd_"):
+                cmd_name = func.replace("cmd_", "").lower()
+                commands.append("{0}{1}".format(self.config.command_prefix, cmd_name))
+
+        msg += ", ".join(commands)
+        msg += "```\nYou can also use `{0}help x` for more info about each command.".format(
+            self.config.command_prefix
+        )
+
+        return msg
