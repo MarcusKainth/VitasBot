@@ -177,6 +177,8 @@ class VitasBot(discord.Client):
         if not handler:
             return
 
+        msg = None
+
         if command == "resume" or command == "pause":
             player = await self.get_player(message.channel)
             msg = await handler(*args, player)
