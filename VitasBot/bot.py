@@ -346,3 +346,13 @@ class VitasBot(discord.Client):
 
         if not player.is_playing():
             player.resume()
+	
+async def cmd_picture(self):
+        """
+        Usage:
+           {command_prefix}picture
+
+        Posts a fabulous picture of the one and only Vitas
+        """
+
+        return "https://upload.wikimedia.org/wikipedia/commons/7/7d/Vitas_russian.jpg"	
