@@ -50,6 +50,7 @@ class VitasBot(discord.Client):
             config = ConfigDefaults()
 
         self.config = config
+        self.players = {}
         self.exit_signal = None
         
         self._setup_logging()
@@ -139,6 +140,16 @@ class VitasBot(discord.Client):
             if self.exit_signal:
                 raise self.exit_signal
 
+    async def get_player(self, channel):
+        server = channel.server
+
+        if server.id not in self.players:
+            raise Exception(
+                "The bot is not in a voice channel"
+            )
+        
+        return self.players[server.id]
+
     async def on_message(self, message):
         await self.wait_until_ready()
 
@@ -166,7 +177,11 @@ class VitasBot(discord.Client):
         if not handler:
             return
 
-        msg = await handler(*args)
+        if command == "resume" or command == "pause":
+            player = await self.get_player(message.channel)
+            msg = await handler(*args, player)
+        else:
+            msg = await handler(*args)
 
         if msg:
             await self.safe_send_message(message.channel, msg)
@@ -304,5 +319,27 @@ class VitasBot(discord.Client):
 
         log.info("Bot joined channel {0}\n".format(channel_id))
 
-        player = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0")
-        player.start()
+        self.players[channel.server.id] = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0")
+        self.players[channel.server.id].start()
+
+    async def cmd_pause(self, player):
+        """
+        Usage:
+            {command_prefix}pause
+
+        Pauses playback of current song.
+        """
+
+        if player.is_playing():
+            player.pause()
+
+    async def cmd_resume(self, player):
+        """
+        Usage:
+            {command_prefix}resume
+
+        Resumes playback of current song.
+        """
+
+        if not player.is_playing():
+            player.resume()
