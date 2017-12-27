@@ -248,20 +248,23 @@ class VitasBot(discord.Client):
                 owner.discriminator
             ))
 
-            log.info("\nServer list:")
+            log.info("Server list:")
             [log.info(" - {0}".format(s.name)) for s in self.servers]
         elif self.servers:
             log.info("Owner could not be found on any server (id: {0})".format(
                 self.config.owner_id
             ))
 
-            log.info("\nServer list:")
+            log.info("Server list:")
             [log.info(" - {0}".format(s.name)) for s in self.servers]
         else:
-            log.info("\nOwner unknown, bot is not on any servers")
+            log.info("Owner unknown, bot is not on any servers")
 
-        log.info("\nChanging nickname to {0}".format(self.config.nickname))
-        await self.change_nickname(self._get_member_from_id(self.user.id), nickname=self.config.nickname)
+        bot_member = self._get_member_from_id(self.user.id)
+
+        if bot_member.nick != self.config.nickname:
+            log.info("Changing nickname to {0}".format(self.config.nickname))
+            await self.change_nickname(bot_member, nickname=self.config.nickname)
 
     async def cmd_help(self, command=None):
         """
