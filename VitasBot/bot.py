@@ -25,9 +25,9 @@ SOFTWARE.
 """
 
 import os
-import glob
 import sys
 import logging
+import time
 
 from textwrap import dedent
 
@@ -183,7 +183,7 @@ class VitasBot(discord.Client):
         if command == "resume" or command == "pause":
             player = await self.get_player(message.channel)
             args.append(player)
-        elif command == "picture":
+        elif command == "picture" or command == "ping":
             args.append(message.channel)
 
         msg = await handler(*args)
@@ -365,5 +365,22 @@ class VitasBot(discord.Client):
 
         for image in images:
             #if any(x in image for x in exts):
-            await self.send_file(channel, self.config.pictures_dir + image)
+            await self.send_file(channel, self.config.pictures_dir + os.path.sep + image)
             return
+
+    async def cmd_ping(self, channel):
+        """
+        Usage:
+            {command_prefix}ping
+
+        Check pseudo-ping to the discord server to ensure connectivity.
+        """
+
+        t1 = time.perf_counter()
+        await self.send_typing(channel)
+        t2 = time.perf_counter()
+
+        msg = "pseudo-ping: {0:.3f}ms".format(round((t2 - t1) * 1000))
+
+        return msg
+
