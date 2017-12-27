@@ -346,8 +346,8 @@ class VitasBot(discord.Client):
 
         if not player.is_playing():
             player.resume()
-	
-async def cmd_picture(self):
+
+    async def cmd_picture(self):
         """
         Usage:
            {command_prefix}picture
