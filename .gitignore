@@ -15,3 +15,7 @@ VitasBot/__pycache__/
 
 # Logs
 logs/
+
+# Storage
+pictures/
+music/

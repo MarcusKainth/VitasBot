@@ -35,7 +35,9 @@ class Config:
         config = configparser.ConfigParser(interpolation=None)
         config.read(config_file, encoding="utf-8")
 
-        config_sections = {"User", "Permissions", "Credentials", "Channel", "Music", "Console"}.difference(config.sections())
+        config_sections = {"User", "Permissions", "Credentials", "Channel",
+                           "Music", "Pictures", "Console"}.difference(
+                           config.sections())
 
         if config_sections:
             raise Exception(
@@ -51,6 +53,9 @@ class Config:
         self.owner_id = config.get("Permissions", "OwnerID")
         self.channel_id = config.get("Channel", "ChannelID")
         self.command_prefix = config.get("Channel", "CommandPrefix")
+        self.volume = config.get("Music", "Volume")
+        self.music_dir = config.get("Music", "Directory")
+        self.pictures_dir = config.get("Pictures", "Directory")
         self.debug_level = config.get("Console", "DebugLevel")
         self.debug_mode = config.get("Console", "DebugMode")
 

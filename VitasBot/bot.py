@@ -25,14 +25,15 @@ SOFTWARE.
 """
 
 import os
+import glob
 import sys
 import logging
+
+from textwrap import dedent
 
 import asyncio
 import discord
 import colorlog
-
-from textwrap import dedent
 
 from .config import ConfigDefaults
 
@@ -181,9 +182,11 @@ class VitasBot(discord.Client):
 
         if command == "resume" or command == "pause":
             player = await self.get_player(message.channel)
-            msg = await handler(*args, player)
-        else:
-            msg = await handler(*args)
+            args.append(player)
+        elif command == "picture":
+            args.append(message.channel)
+
+        msg = await handler(*args)
 
         if msg:
             await self.safe_send_message(message.channel, msg)
@@ -349,7 +352,7 @@ class VitasBot(discord.Client):
         if not player.is_playing():
             player.resume()
 
-    async def cmd_picture(self):
+    async def cmd_picture(self, channel):
         """
         Usage:
            {command_prefix}picture
@@ -357,4 +360,10 @@ class VitasBot(discord.Client):
         Posts a fabulous picture of the one and only Vitas
         """
 
-        return "https://upload.wikimedia.org/wikipedia/commons/7/7d/Vitas_russian.jpg"	
+        exts = [".jpg", ".jpeg", ".gif", ".gifv", ".png", ".webm"]
+        images = [i for i in os.listdir(self.config.pictures_dir)]
+
+        for image in images:
+            #if any(x in image for x in exts):
+            await self.send_file(channel, self.config.pictures_dir + image)
+            return
