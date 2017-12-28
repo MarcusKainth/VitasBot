@@ -26,19 +26,23 @@ SOFTWARE.
 
 import os
 import sys
+import random
 import logging
 import time
 
 from textwrap import dedent
 
+import aiohttp
 import asyncio
 import discord
 import colorlog
 
-from .config import ConfigDefaults
+from discord.enums import ChannelType
 
+from .config import ConfigDefaults
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT
+from .utils import __func__
 
 discord.opus.load_opus("libopus-0.x64.dll")
 
@@ -52,6 +56,8 @@ class VitasBot(discord.Client):
 
         self.config = config
         self.players = {}
+        self.now_playing = {}
+        self.voices = {}
         self.exit_signal = None
         
         self._setup_logging()
@@ -141,6 +147,74 @@ class VitasBot(discord.Client):
             if self.exit_signal:
                 raise self.exit_signal
 
+    async def join_voice_channel(self, channel):
+        if isinstance(channel, discord.Object):
+            channel = self.get_channel(channel.id)
+
+        if getattr(channel, "type", ChannelType.text) != ChannelType.voice:
+            raise discord.InvalidArgument(
+                "Channel passed must be a voice channel")
+
+        server = channel.server
+
+        if self.is_voice_connected(server):
+            raise discord.ClientException(
+                "Already conenct to voice channel in server {0}".format(
+                    server.name
+                ))
+
+        def session_id_found(data):
+            user_id = data.get("user_id")
+            guild_id = data.get("guild_id")
+            return user_id == self.user.id and guild_id == server.id
+
+        log.debug("({0}) Creating futures".format(__func__()))
+        # register the futures for waiting
+        session_id_future = self.ws.wait_for('VOICE_STATE_UPDATE', session_id_found)
+        voice_data_future = self.ws.wait_for('VOICE_SERVER_UPDATE', lambda d: d.get('guild_id') == server.id)
+
+        log.debug("({0}) Setting voice state".format(__func__()))
+        await self.ws.voice_state(server.id, channel.id)
+
+        log.debug("({0}) Waiting for session id".format(__func__()))
+        session_id_data = await asyncio.wait_for(session_id_future, timeout=15, loop=self.loop)
+
+        log.debug("({0}) Waiting for voice data".format(__func__()))
+        data = await asyncio.wait_for(voice_data_future, timeout=15, loop=self.loop)
+
+        kwargs ={
+            "user": self.user,
+            "channel": channel,
+            "data": data,
+            "loop": self.loop,
+            "session_id": session_id_data.get("session_id"),
+            "main_ws": self.ws
+        }
+
+        voice = discord.VoiceClient(**kwargs)
+
+        try:
+            log.debug("({0}) Connecting...".format(__func__()))
+            
+            with aiohttp.Timeout(15):
+                await voice.connect()
+        except asyncio.TimeoutError as e:
+            log.debug("({0}) Connection failed, disconnecting...".format(__func__()))
+
+            try:
+                await voice.disconenct()
+            except:
+                pass
+
+            log.debug("({0}) Disconnected successfully".format(__func__()))
+
+            raise e
+
+        log.debug("({0}) Connected successfully".format(__func__()))
+
+        self.connection._add_voice_client(server.id, voice)
+        return voice
+
     async def get_player(self, channel):
         server = channel.server
 
@@ -180,11 +254,7 @@ class VitasBot(discord.Client):
 
         msg = None
 
-        if command == "resume" or command == "pause":
-            player = await self.get_player(message.channel)
-            args.append(player)
-        elif command == "picture" or command == "ping":
-            args.append(message.channel)
+        args.insert(0, message.channel)
 
         msg = await handler(*args)
 
@@ -271,7 +341,7 @@ class VitasBot(discord.Client):
             log.info("Changing nickname to {0}".format(self.config.nickname))
             await self.change_nickname(bot_member, nickname=self.config.nickname)
 
-    async def cmd_help(self, command=None):
+    async def cmd_help(self, channel, command=None):
         """
         Usage:
             {command_prefix}help [command]
@@ -307,30 +377,51 @@ class VitasBot(discord.Client):
 
         return msg
 
-    async def cmd_play(self, channel_id, song=None):
+    async def cmd_join(self, channel, channel_id):
         """
         Usage:
-            {command_prefix}play [channel_id] [song]
+            {command_prefix}join [channel_id]
+
+        Join voice channel on servers the bot is affiliated with.
+        """
+
+        channel = self.get_channel(str(channel_id))
+        voice = await self.join_voice_channel(channel)
+        self.voices[channel.server.id] = voice
+
+    async def cmd_play(self, channel, song=None):
+        """
+        Usage:
+            {command_prefix}play [*song]
+
+        * = Optional argument
 
         Play song stored on the bot.
         Note: If song is not specified, the bot will pick a song to play 
         from random in the songs directory specified in the configuration
         """
         
-        filename, file_extension = os.path.splitext(song)
+        # Pick a random song from the folder
+        if song is None:
+            random.seed(time.clock())
+            songs = [i for i in os.listdir(self.config.music_dir)]
+            song = songs[random.randint(0, len(songs) - 1)]
+
+        path = self.config.music_dir + os.path.sep + song
+        filename, file_extension = os.path.splitext(path)
         now_playing = "Now playing: {}".format(filename)
         log.info(now_playing)
         await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
 
-        channel = self.get_channel(str(channel_id))
-        voice = await self.join_voice_channel(channel)
+        if channel.server.id in self.voices:
+            voice = self.voices[channel.server.id]
+            self.players[channel.server.id] = voice.create_ffmpeg_player(path, before_options="-re", options="-nostats -loglevel 0")
+            self.now_playing[channel.server.id] = song
+            self.players[channel.server.id].start()
+        else:
+            raise Exception("The bot is not part of a voice channel")
 
-        log.info("Bot joined channel {0}\n".format(channel_id))
-
-        self.players[channel.server.id] = voice.create_ffmpeg_player(song, before_options="-re", options="-nostats -loglevel 0")
-        self.players[channel.server.id].start()
-
-    async def cmd_pause(self, player):
+    async def cmd_pause(self, channel):
         """
         Usage:
             {command_prefix}pause
@@ -338,10 +429,14 @@ class VitasBot(discord.Client):
         Pauses playback of current song.
         """
 
-        if player.is_playing():
-            player.pause()
+        if channel.server.id in self.players:
+            player = self.players[channel.server.id]
+            if player.is_playing():
+                player.pause()
+        else:
+            raise Exception("Bot is not playing in this server")
 
-    async def cmd_resume(self, player):
+    async def cmd_resume(self, channel):
         """
         Usage:
             {command_prefix}resume
@@ -349,8 +444,57 @@ class VitasBot(discord.Client):
         Resumes playback of current song.
         """
 
-        if not player.is_playing():
-            player.resume()
+        if channel.server.id in self.players:
+            player = self.players[channel.server.id]
+            if not player.is_playing():
+                player.resume()
+        else:
+            raise Exception("Bot is not playing in this server")
+
+    async def cmd_stop(self, channel):
+        """
+        Usage:
+            {command_prefix}stop
+
+        Stops playback of current song.
+        """
+
+        if channel.server.id in self.players:
+            player = self.players.pop(channel.server.id)
+            player.stop()
+
+            if channel.server.id in self.now_playing:
+                self.now_playing.pop(channel.server.id)
+
+                await self.change_presence(game=None,
+                    status=discord.Status.online, afk=False)
+        else:
+            raise Exception("Bot is not playing in this server")
+
+    async def cmd_leave(self, channel):
+        """
+        Usage:
+            {command_prefix}leave
+
+        Leaves current voice channel in the server.
+        """
+
+        if channel.server.id in self.voices:
+            voice = self.voices.pop(channel.server.id])
+
+            if channel.server.id in self.players:
+                player = self.players.pop(channel.server.id)
+                player.stop()
+
+            if channel.server.id in self.now_playing:
+                self.now_playing.pop(channel.server.id)
+
+                await self.change_presence(game=None,
+                    status=discord.Status.online, afk=False)
+
+            await voice.disconnect()
+        else:
+            raise Exception("Bot is not in any voice channels on this server")
 
     async def cmd_picture(self, channel):
         """
@@ -384,3 +528,17 @@ class VitasBot(discord.Client):
 
         return msg
 
+    async def cmd_now_playing(self, channel):
+        """
+        Usage:
+            {command_prefix}now_playing
+
+        Sends a message with the current song playing on this server_id.
+        """
+
+        if not channel.server.id in self.now_playing:
+            raise Exception(
+                "The bot is not playing any songs"
+            )
+
+        return self.now_playing[channel.server.id]
