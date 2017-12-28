@@ -410,15 +410,15 @@ class VitasBot(discord.Client):
             songs = [i for i in os.listdir(self.config.music_dir)]
             song = songs[random.randint(0, len(songs) - 1)]
 
-        path = self.config.music_dir + os.path.sep + song
-        filename, file_extension = os.path.splitext(path)
-        now_playing = "Now playing: {}".format(filename)
-        log.info(now_playing)
-        await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
-
         voice = self.voice_client_in(channel.server)
 
         if voice is not None:
+            path = self.config.music_dir + os.path.sep + song
+            filename, file_extension = os.path.splitext(path)
+            now_playing = "Now playing: {}".format(filename)
+            log.info(now_playing)
+            await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
+
             self.players[channel.server.id] = voice.create_ffmpeg_player(path, before_options="-re", options="-nostats -loglevel 0")
             self.now_playing[channel.server.id] = song
             self.players[channel.server.id].start()
