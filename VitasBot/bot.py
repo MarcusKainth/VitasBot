@@ -316,9 +316,9 @@ class VitasBot(discord.Client):
         if type(self.config.owner_id) is not list:
             self.config.owner_id = [self.config.owner_id]
 
-        for owner_id in self.config.owner_id:
-            owner_id = owner_id.strip()
-            owner = self._get_member_from_id(owner_id)
+        for i, s in enumerate(self.config.owner_id):
+            self.config.owner_id[i] = s.strip()
+            owner = self._get_member_from_id(self.config.owner_id[i])
 
             if owner and self.servers:
                 log.info("Owner: {0}/{1}#{2}".format(
@@ -345,8 +345,21 @@ class VitasBot(discord.Client):
             log.info("Changing nickname to {0}".format(self.config.nickname))
             await self.change_nickname(bot_member, nickname=self.config.nickname)
 
-    def remove_player(self, server):
-        self.players.pop(server.id)
+    def remove_player(self, channel):
+        try:
+            self.players.pop(server.id)
+
+            if channel.server.id in self.now_playing:
+                self.now_playing.pop(channel.server.id)
+
+                coro = self.change_presence(game=None,
+                    status=discord.Status.online, afk=False)
+
+                self.loop.run_until_complete(coro)
+        except:
+            pass
+        finally:
+            self.loop.close()
 
     async def cmd_help(self, channel, command=None):
         """
@@ -425,7 +438,7 @@ class VitasBot(discord.Client):
 
                 self.players[channel.server.id] = voice.create_ffmpeg_player(path,
                     before_options="-re", options="-nostats -loglevel 0",
-                    after=lambda: self.remove_player(channel.server))
+                    after=lambda: self.remove_player(channel))
                 self.now_playing[channel.server.id] = song
                 self.players[channel.server.id].start()
             else:
