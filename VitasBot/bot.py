@@ -345,6 +345,9 @@ class VitasBot(discord.Client):
             log.info("Changing nickname to {0}".format(self.config.nickname))
             await self.change_nickname(bot_member, nickname=self.config.nickname)
 
+    def remove_player(self, server):
+        self.players.pop(server.id)
+
     async def cmd_help(self, channel, command=None):
         """
         Usage:
@@ -413,15 +416,20 @@ class VitasBot(discord.Client):
         voice = self.voice_client_in(channel.server)
 
         if voice is not None:
-            path = self.config.music_dir + os.path.sep + song
-            filename, file_extension = os.path.splitext(path)
-            now_playing = "Now playing: {}".format(filename)
-            log.info(now_playing)
-            await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
+            if channel.server.id not in self.players:
+                path = self.config.music_dir + os.path.sep + song
+                filename, file_extension = os.path.splitext(path)
+                now_playing = "Now playing: {}".format(filename)
+                log.info(now_playing)
+                await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
 
-            self.players[channel.server.id] = voice.create_ffmpeg_player(path, before_options="-re", options="-nostats -loglevel 0")
-            self.now_playing[channel.server.id] = song
-            self.players[channel.server.id].start()
+                self.players[channel.server.id] = voice.create_ffmpeg_player(path,
+                    before_options="-re", options="-nostats -loglevel 0",
+                    after=lambda: self.remove_player(channel.server))
+                self.now_playing[channel.server.id] = song
+                self.players[channel.server.id].start()
+            else:
+                raise Exception("Bot is already playing in voice channel")
         else:
             raise Exception("The bot is not part of a voice channel")
 
