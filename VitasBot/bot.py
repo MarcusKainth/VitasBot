@@ -57,7 +57,6 @@ class VitasBot(discord.Client):
         self.config = config
         self.players = {}
         self.now_playing = {}
-        self.voices = {}
         self.exit_signal = None
         
         self._setup_logging()
@@ -387,7 +386,6 @@ class VitasBot(discord.Client):
 
         channel = self.get_channel(str(channel_id))
         voice = await self.join_voice_channel(channel)
-        self.voices[channel.server.id] = voice
 
     async def cmd_play(self, channel, song=None):
         """
@@ -413,8 +411,9 @@ class VitasBot(discord.Client):
         log.info(now_playing)
         await self.change_presence(game=discord.Game(name=filename), status=discord.Status.online, afk=False)
 
-        if channel.server.id in self.voices:
-            voice = self.voices[channel.server.id]
+        voice = self.voice_client_in(channel.server)
+
+        if voice is not None:
             self.players[channel.server.id] = voice.create_ffmpeg_player(path, before_options="-re", options="-nostats -loglevel 0")
             self.now_playing[channel.server.id] = song
             self.players[channel.server.id].start()
@@ -479,9 +478,9 @@ class VitasBot(discord.Client):
         Leaves current voice channel in the server.
         """
 
-        if channel.server.id in self.voices:
-            voice = self.voices.pop(channel.server.id])
+        voice = self.voice_client_in(channel.server)
 
+        if voice is not None:
             if channel.server.id in self.players:
                 player = self.players.pop(channel.server.id)
                 player.stop()
