@@ -532,10 +532,11 @@ class VitasBot(discord.Client):
         exts = [".jpg", ".jpeg", ".gif", ".gifv", ".png", ".webm"]
         images = [i for i in os.listdir(self.config.pictures_dir)]
 
-        for image in images:
-            #if any(x in image for x in exts):
-            await self.send_file(channel, self.config.pictures_dir + os.path.sep + image)
-            return
+        random.seed(time.clock())
+        image = images[random.randint(0, len(images) - 1)]
+
+        await self.send_file(channel, self.config.pictures_dir + os.path.sep + image)
+        return
 
     async def cmd_ping(self, channel):
         """
