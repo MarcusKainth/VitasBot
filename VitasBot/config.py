@@ -50,7 +50,12 @@ class Config:
 
         self.nickname = config.get("User", "Nickname")
         self.token = config.get("Credentials", "Token")
+
         self.owner_id = config.get("Permissions", "OwnerID")
+
+        if ',' in self.owner_id:
+            self.owner_id = self.owner_id.split(",")
+
         self.channel_id = config.get("Channel", "ChannelID")
         self.command_prefix = config.get("Channel", "CommandPrefix")
         self.volume = config.get("Music", "Volume")

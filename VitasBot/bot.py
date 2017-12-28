@@ -232,7 +232,7 @@ class VitasBot(discord.Client):
                 message.content))
             return
 
-        if message.author.id != self.config.owner_id:
+        if message.author.id not in self.config.owner_id:
             log.warning("Ignoring messages from user ({0}/{1}#{2}): {3}".format(
                 message.author.id, message.author.name, message.author.discriminator,
                 message.content))
@@ -313,26 +313,31 @@ class VitasBot(discord.Client):
                 " [BOT]" if self.user.bot else " [UserBOT]"
         ))
 
-        owner = self._get_member_from_id(self.config.owner_id)
+        if type(self.config.owner_id) is not list:
+            self.config.owner_id = [self.config.owner_id]
 
-        if owner and self.servers:
-            log.info("Owner: {0}/{1}#{2}".format(
-                owner.id,
-                owner.name,
-                owner.discriminator
-            ))
+        for owner_id in self.config.owner_id:
+            owner_id = owner_id.strip()
+            owner = self._get_member_from_id(owner_id)
 
-            log.info("Server list:")
-            [log.info(" - {0}".format(s.name)) for s in self.servers]
-        elif self.servers:
-            log.info("Owner could not be found on any server (id: {0})".format(
-                self.config.owner_id
-            ))
+            if owner and self.servers:
+                log.info("Owner: {0}/{1}#{2}".format(
+                    owner.id,
+                    owner.name,
+                    owner.discriminator
+                ))
 
-            log.info("Server list:")
-            [log.info(" - {0}".format(s.name)) for s in self.servers]
-        else:
-            log.info("Owner unknown, bot is not on any servers")
+                log.info("Server list:")
+                [log.info(" - {0}".format(s.name)) for s in self.servers]
+            elif self.servers:
+                log.info("Owner could not be found on any server (id: {0})".format(
+                    owner_id
+                ))
+
+                log.info("Server list:")
+                [log.info(" - {0}".format(s.name)) for s in self.servers]
+            else:
+                log.info("Owner unknown, bot is not on any servers")
 
         bot_member = self._get_member_from_id(self.user.id)
 
@@ -523,7 +528,7 @@ class VitasBot(discord.Client):
         await self.send_typing(channel)
         t2 = time.perf_counter()
 
-        msg = "pseudo-ping: {0:.3f}ms".format(round((t2 - t1) * 1000))
+        msg = "pseudo-ping: {0:.3f}ms".format((t2 - t1) * 1000)
 
         return msg
 
