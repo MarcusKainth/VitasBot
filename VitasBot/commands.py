@@ -84,6 +84,21 @@ class Commands:
         Join voice channel on servers the bot is affiliated with.
         """
 
+        voice = self.bot.voice_client_in(channel.server)
+
+        if voice is not None:
+            if channel.server.id in self.bot.players:
+                player = self.bot.players.pop(channel.server.id)
+                player.stop()
+
+            if channel.server.id in self.bot.now_playing:
+                self.bot.now_playing.pop(channel.server.id)
+
+                await self.bot.change_presence(game=None,
+                    status=Status.online, afk=False)
+                    
+            await voice.disconnect()
+
         channel = self.bot.get_channel(str(channel_id))
         voice = await self.bot.join_voice_channel(channel)
 
@@ -101,7 +116,6 @@ class Commands:
         
         # Pick a random song from the folder
         if song is None:
-            random.seed(time.clock())
             songs = [i for i in os.listdir(self.bot.config.music_dir)]
             song = random.choice(songs)
 
