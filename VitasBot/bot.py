@@ -424,7 +424,7 @@ class VitasBot(discord.Client):
         if song is None:
             random.seed(time.clock())
             songs = [i for i in os.listdir(self.config.music_dir)]
-            song = songs[random.randint(0, len(songs) - 1)]
+            song = random.choice(songs)
 
         voice = self.voice_client_in(channel.server)
 
@@ -532,8 +532,7 @@ class VitasBot(discord.Client):
         exts = [".jpg", ".jpeg", ".gif", ".gifv", ".png", ".webm"]
         images = [i for i in os.listdir(self.config.pictures_dir)]
 
-        random.seed(time.clock())
-        image = images[random.randint(0, len(images) - 1)]
+        image = random.choice(images)
 
         await self.send_file(channel, self.config.pictures_dir + os.path.sep + image)
         return
