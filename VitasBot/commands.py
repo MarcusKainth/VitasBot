@@ -102,10 +102,10 @@ class Commands:
         channel = self.bot.get_channel(str(channel_id))
         voice = await self.bot.join_voice_channel(channel)
 
-    async def cmd_play(self, channel, song=None):
+    async def cmd_play(self, channel, volume=1.0, song=None):
         """
         Usage:
-            {command_prefix}play [*song]
+            {command_prefix}play [*volume] [*song]
 
         * = Optional argument
 
@@ -132,6 +132,7 @@ class Commands:
                 self.bot.players[channel.server.id] = voice.create_ffmpeg_player(path,
                     before_options="-re", options="-nostats -loglevel 0",
                     after=lambda: self.bot.remove_player(channel))
+                self.bot.players[channel.server.id].volume = float(volume)
                 self.bot.now_playing[channel.server.id] = song
                 self.bot.players[channel.server.id].start()
             else:

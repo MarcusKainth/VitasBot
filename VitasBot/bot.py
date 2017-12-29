@@ -255,7 +255,14 @@ class VitasBot(discord.Client):
 
         msg = await handler(*args)
 
+        #kwargs = {
+        #    "tts": False,
+        #    "quiet": False,
+        #    "expire_in": 10
+        #}
+
         if msg:
+            #await self.safe_send_message(message.channel, msg, **kwargs)
             await self.safe_send_message(message.channel, msg)
 
     async def safe_send_message(self, dest, content, **kwargs):
