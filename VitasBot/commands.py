@@ -127,7 +127,7 @@ class Commands:
                 filename, file_extension = os.path.splitext(path)
                 now_playing = "Now playing: {}".format(filename)
                 log.info(now_playing)
-                await self.bot.change_presence(game=Game(name=filename), status=Status.online, afk=False)
+                await self.bot.update_playing_presence(song)
 
                 self.bot.players[channel.server.id] = voice.create_ffmpeg_player(path,
                     before_options="-re", options="-nostats -loglevel 0",
@@ -152,6 +152,9 @@ class Commands:
             player = self.bot.players[channel.server.id]
             if player.is_playing():
                 player.pause()
+                await self.bot.update_playing_presence(
+                    song=self.bot.now_playing[channel.server.id],
+                    is_paused=True)
         else:
             raise Exception("Bot is not playing in this server")
 
@@ -167,6 +170,9 @@ class Commands:
             player = self.bot.players[channel.server.id]
             if not player.is_playing():
                 player.resume()
+                await self.bot.update_playing_presence(
+                    song=self.bot.now_playing[channel.server.id],
+                    is_paused=False)
         else:
             raise Exception("Bot is not playing in this server")
 
@@ -185,8 +191,7 @@ class Commands:
             if channel.server.id in self.bot.now_playing:
                 self.bot.now_playing.pop(channel.server.id)
 
-                await self.bot.change_presence(game=None,
-                    status=Status.online, afk=False)
+                await self.bot.update_playing_presence()
         else:
             raise Exception("Bot is not playing in this server")
 
@@ -208,8 +213,7 @@ class Commands:
             if channel.server.id in self.bot.now_playing:
                 self.bot.now_playing.pop(channel.server.id)
 
-                await self.bot.change_presence(game=None,
-                    status=Status.online, afk=False)
+                await self.bot.update_playing_presence()
 
             await voice.disconnect()
         else:

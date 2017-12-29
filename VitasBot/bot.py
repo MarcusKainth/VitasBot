@@ -33,15 +33,17 @@ import asyncio
 import discord
 import colorlog
 
+from collections import defaultdict
+
 from discord.enums import ChannelType
 
 from .commands import Commands
 from .config import ConfigDefaults
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT
-from .utils import __func__
+from .utils import __func__, load_opus_lib
 
-discord.opus.load_opus("libopus-0.x64.dll")
+load_opus_lib()
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +57,10 @@ class VitasBot(discord.Client):
         self.commands = Commands(self)
         self.players = {}
         self.now_playing = {}
+        self.last_status = None
         self.exit_signal = None
+
+        self.aiolocks = defaultdict(asyncio.Lock)
         
         self._setup_logging()
 
@@ -365,3 +370,27 @@ class VitasBot(discord.Client):
             pass
         finally:
             self.loop.close()
+
+    async def update_playing_presence(self, song=None, is_paused=False):
+        game = None
+
+        if self.user.bot:
+            active_players = sum(1 for p in self.players.values() if p.is_playing())
+
+            if active_players > 1:
+                game = discord.Game(name="music on {0} servers".format(
+                    active_players))
+                song = None
+            elif active_players == 1:
+                player = discord.utils.get(self.players.values(), is_playing=True)
+                # TODO: Get song from player
+
+        if song:
+            prefix = u"\u275A\u275A " if is_paused else u"\u25B6 "
+            name = "{0}{1}".format(prefix, song)[:128]
+            game = discord.Game(name=name)
+
+        async with self.aiolocks[__func__()]:
+            if game != self.last_status:
+                await self.change_presence(game=game)
+                self.last_status = game
