@@ -89,7 +89,7 @@ class Commands:
         voice = self.bot.voice_client_in(channel.server)
 
         if channel_id is None:
-            channel_id = 365610229418950658
+            channel_id = self.bot.config.channel_id
 
         if voice is not None:
             if channel.server.id in self.bot.players:
