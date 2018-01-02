@@ -48,25 +48,32 @@ class Config:
                 )
             )
 
-        self.nickname = config.get("User", "Nickname")
-        self.token = config.get("Credentials", "Token")
+        self.nickname = config.get("User", "Nickname", fallback=ConfigDefaults.nickname)
+        self.token = config.get("Credentials", "Token", fallback=ConfigDefaults.token)
+        self.proxy = config.get("Credentials", "Proxy", fallback=ConfigDefaults.proxy)
 
-        self.owner_id = config.get("Permissions", "OwnerID")
+        self.owner_id = config.get("Permissions", "OwnerID", fallback=ConfigDefaults.owner_id)
 
         if ',' in self.owner_id:
             self.owner_id = self.owner_id.split(",")
 
-        self.channel_id = config.get("Channel", "ChannelID")
-        self.command_prefix = config.get("Channel", "CommandPrefix")
-        self.volume = config.get("Music", "Volume")
-        self.music_dir = config.get("Music", "Directory")
-        self.pictures_dir = config.get("Pictures", "Directory")
-        self.debug_level = config.get("Console", "DebugLevel")
-        self.debug_mode = config.get("Console", "DebugMode")
+        self.channel_id = config.get("Channel", "ChannelID", fallback=ConfigDefaults.channel_id)
+        self.command_prefix = config.get("Channel", "CommandPrefix", fallback=ConfigDefaults.command_prefix)
+        self.volume = config.get("Music", "Volume", fallback=ConfigDefaults.volume)
+        self.music_dir = config.get("Music", "Directory", fallback=ConfigDefaults.music_dir)
+        self.pictures_dir = config.get("Pictures", "Directory", fallback=ConfigDefaults.pictures_dir)
+        self.debug_level = config.get("Console", "DebugLevel", fallback=ConfigDefaults.debug_level)
+        self.debug_mode = config.get("Console", "DebugMode", fallback=ConfigDefaults.debug_mode)
 
 class ConfigDefaults:
-    def __init__(self):
-        self.nickname = None
-        self.token = "TOKEN_HERE"
-        self.owner_id = 000000000000000000
-        self.channel_id = 000000000000000000
+    nickname = None
+    token = "TOKEN_HERE"
+    owner_id = 000000000000000000
+    channel_id = 000000000000000000
+    command_prefix = None
+    volume = 1.0
+    music_dir = "music"
+    pictures_dir = "pictures"
+    debug_level = "INFO"
+    debug_mode = True
+    proxy = None

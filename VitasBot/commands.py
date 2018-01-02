@@ -76,15 +76,20 @@ class Commands:
 
         return msg
 
-    async def cmd_join(self, channel, channel_id):
+    async def cmd_join(self, channel, channel_id=None):
         """
         Usage:
-            {command_prefix}join [channel_id]
+            {command_prefix}join [*channel_id]
+
+        * = Optional argument
 
         Join voice channel on servers the bot is affiliated with.
         """
 
         voice = self.bot.voice_client_in(channel.server)
+
+        if channel_id is None:
+            channel_id = 365610229418950658
 
         if voice is not None:
             if channel.server.id in self.bot.players:

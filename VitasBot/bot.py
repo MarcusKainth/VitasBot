@@ -60,11 +60,20 @@ class VitasBot(discord.Client):
         self.last_status = None
         self.exit_signal = None
 
+        if self.config.proxy:
+            self.connector = aiohttp.ProxyConnector(proxy=self.config.proxy)
+        else:
+            self.connector = aiohttp.TCPConnector()
+
         self.aiolocks = defaultdict(asyncio.Lock)
         
         self._setup_logging()
 
-        super().__init__()
+        options = {
+            "connector": self.connector
+        }
+
+        super().__init__(loop=None, **options)
 
         self.http.user_agent += " VitasBot/{0}".format(str(BOTVERSION))
 
